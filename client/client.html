@@ -5,7 +5,7 @@
   <link rel="stylesheet" type="text/css" href="/style.css">
   
   <script>
-    const handleResponse = async (response, parseResponse) => {
+    const handleResponse = async (response, parseResponse, messageOnly) => {
       const content = document.querySelector('#content');
 
       switch(response.status) {
@@ -15,11 +15,16 @@
         case 201:
           content.innerHTML = `<b>Created</b>`;
           break;
+        case 204:
+          content.innerHTML = `<b>Updated (No Content)</b>`;
+          parseResponse = false;
+          break;
         case 400: 
           content.innerHTML = `<b>Bad Request</b>`;
           break;
         case 404:
           content.innerHTML = `<b>Not Found</b>`;
+          messageOnly = true;
           break;
         default: 
           content.innerHTML = `Error code not implemented by client.`;
@@ -27,12 +32,16 @@
       }
 
       if (parseResponse) {
-        const textResponse = await response.text();
-        content.innerHTML += `<p>${textResponse}</p>`;
+        const jsonResponse = await response.json();
+        if (messageOnly) {
+          content.innerHTML += `<p>Message: ${jsonResponse.message}</p>`;
+        } else {
+          content.innerHTML += `<p>${JSON.stringify(jsonResponse.users)}</p>`;
+        }
       }
     };
 
-    const requestUpdate = async (nameForm) => {
+    const requestPostUser = async (nameForm) => {
       const name = nameForm.querySelector('#nameField').value;
       const age = nameForm.querySelector('#ageField').value;
       
@@ -43,19 +52,41 @@
         },
       });
 
-      handleResponse(response, true);
+      handleResponse(response, true, true);
+    };
+
+    const requestGetUsers = async (userForm) => {
+      const url = userForm.querySelector('#urlField').value;
+      const method = userForm.querySelector('#methodSelect').value;
+      
+      const response = await fetch(url, {
+        method: method,
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      handleResponse(response, method !== 'head', false);
     };
 
     const init = () => {
       const nameForm = document.querySelector('#nameForm');
+      const userForm = document.querySelector('#userForm');
 
       const postUser = (event) => {
         event.preventDefault();
-        requestUpdate(nameForm);
+        requestPostUser(nameForm);
+        return false;
+      }
+
+      const getUsers = (event) => {
+        event.preventDefault();
+        requestGetUsers(userForm);
         return false;
       }
 
       nameForm.addEventListener('submit', postUser);
+      userForm.addEventListener('submit', getUsers);
     }
 
     window.onload = init;
